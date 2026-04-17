@@ -1,7 +1,6 @@
 import discord
 from discord.ext import commands
 import os
-import random
 
 # =========================
 # INTENTS
@@ -12,13 +11,11 @@ intents.members = True
 
 bot = commands.Bot(command_prefix="!", intents=intents)
 
-bot.remove_command("help")
-
-print("🔥 BOT FILE LOADED")
-
 # =========================
-# ONDUTY CONFIG
+# CONFIG
 # =========================
+TOKEN = os.getenv("TOKEN")
+
 ONDUTY_PASSWORD = "louis12"
 
 ONDUTY_ROLES = [
@@ -26,46 +23,35 @@ ONDUTY_ROLES = [
     1482706289048948826   # 👑 CO OWNER
 ]
 
-# =========================
-# VERIFY SYSTEM
-# =========================
-verification_codes = {}
-
-VERIFY_ROLE_NAME = "Verified"
+waiting_password = {}
 
 # =========================
-# READY EVENT
+# READY
 # =========================
 @bot.event
 async def on_ready():
     print(f"🤖 BOT ONLINE: {bot.user}")
 
 # =========================
-# TEST COMMAND
+# TEST
 # =========================
 @bot.command()
 async def test(ctx):
     await ctx.send("✅ Bot funktioniert")
 
 # =========================
-# ONDUTY
+# ONDUTY (DM PASSWORD)
 # =========================
 @bot.command()
-async def onduty(ctx, password: str):
+async def onduty(ctx):
 
-    await ctx.message.delete()
-
-    if password != ONDUTY_PASSWORD:
-        return await ctx.send("❌ Falsches Passwort", delete_after=3)
-
-    for role_id in ONDUTY_ROLES:
-        role = ctx.guild.get_role(role_id)
-
-        if role:
-            await ctx.author.add_roles(role)
-
-    msg = await ctx.send("🟢 OnDuty aktiviert")
-    await msg.delete(delay=5)
+    try:
+        dm = await ctx.author.create_dm()
+        await dm.send("🔐 Bitte gib dein OnDuty Passwort ein:")
+        waiting_password[ctx.author.id] = ctx.guild.id
+        await ctx.send("📩 Ich habe dir eine DM geschickt!")
+    except:
+        await ctx.send("❌ Konnte keine DM senden")
 
 # =========================
 # OFFDUTY
@@ -73,83 +59,60 @@ async def onduty(ctx, password: str):
 @bot.command()
 async def offduty(ctx):
 
-    removed = []
+    removed = False
 
     for role_id in ONDUTY_ROLES:
         role = ctx.guild.get_role(role_id)
 
         if role and role in ctx.author.roles:
             await ctx.author.remove_roles(role)
-            removed.append(role.name)
+            removed = True
 
     if removed:
-        msg = await ctx.send("🔴 OffDuty deaktiviert")
-        await msg.delete(delay=5)
+        await ctx.send("🔴 OffDuty aktiviert")
     else:
-        await ctx.send("❌ Du bist nicht OnDuty", delete_after=3)
+        await ctx.send("❌ Du bist nicht OnDuty")
 
 # =========================
-# VERIFY
+# PASSWORD HANDLER
 # =========================
-@bot.command()
-async def verify(ctx):
-    code = random.randint(1000, 9999)
-    verification_codes[ctx.author.id] = code
+@bot.event
+async def on_message(message):
 
-    await ctx.author.send(f"🔐 Dein Code: {code}")
-    await ctx.send("📩 Check deine DMs!")
+    if message.author.bot:
+        return
 
-@bot.command()
-async def code(ctx, number: int):
+    user_id = message.author.id
 
-    if ctx.author.id not in verification_codes:
-        return await ctx.send("❌ Kein Code vorhanden")
+    if user_id in waiting_password:
 
-    if verification_codes[ctx.author.id] == number:
+        if message.guild is None:  # nur DM
+            guild_id = waiting_password[user_id]
 
-        role = discord.utils.get(ctx.guild.roles, name=VERIFY_ROLE_NAME)
+            if message.content == ONDUTY_PASSWORD:
 
-        if role:
-            await ctx.author.add_roles(role)
-            await ctx.send("✅ Verifiziert!")
-        else:
-            await ctx.send("❌ Rolle 'Verified' fehlt!")
+                guild = discord.utils.get(bot.guilds, id=guild_id)
+                member = guild.get_member(user_id)
 
-        del verification_codes[ctx.author.id]
+                if member:
+                    for role_id in ONDUTY_ROLES:
+                        role = guild.get_role(role_id)
+                        if role:
+                            await member.add_roles(role)
 
-    else:
-        await ctx.send("❌ Falscher Code")
+                    await message.channel.send("🟢 OnDuty aktiviert!")
+                else:
+                    await message.channel.send("❌ User nicht gefunden")
 
-# =========================
-# ECONOMY
-# =========================
-coins = {}
+            else:
+                await message.channel.send("❌ Falsches Passwort")
 
-@bot.command()
-async def daily(ctx):
-    coins[ctx.author.id] = coins.get(ctx.author.id, 0) + 100
-    await ctx.send("💰 +100 Coins")
+            del waiting_password[user_id]
+            return
 
-@bot.command()
-async def balance(ctx):
-    await ctx.send(f"💰 Coins: {coins.get(ctx.author.id, 0)}")
-
-# =========================
-# HELP
-# =========================
-@bot.command()
-async def help(ctx):
-    await ctx.send("""
-🤖 BOT COMMANDS
-
-💰 !daily / !balance
-🔐 !verify / !code
-🟢 !onduty <passwort>
-🔴 !offduty
-🧪 !test
-""")
+    await bot.process_commands(message)
 
 # =========================
 # START BOT
 # =========================
-bot.run(os.getenv("TOKEN"))
+bot.run(TOKEN)
