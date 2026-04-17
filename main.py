@@ -1,9 +1,7 @@
-print("CODE WIRD GELADEN")
 import discord
 from discord.ext import commands
 import os
 import random
-import asyncio
 
 # =========================
 # INTENTS
@@ -16,14 +14,10 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 
 bot.remove_command("help")
 
-# =========================
-# DATABASE
-# =========================
-coins = {}
-verification_codes = {}
+print("🔥 BOT FILE LOADED")
 
 # =========================
-# ONDUTY CONFIG (ROLE IDS)
+# ONDUTY CONFIG
 # =========================
 ONDUTY_PASSWORD = "louis12"
 
@@ -33,11 +27,25 @@ ONDUTY_ROLES = [
 ]
 
 # =========================
-# START
+# VERIFY SYSTEM
+# =========================
+verification_codes = {}
+
+VERIFY_ROLE_NAME = "Verified"
+
+# =========================
+# READY EVENT
 # =========================
 @bot.event
 async def on_ready():
-    print(f"Bot online: {bot.user}")
+    print(f"🤖 BOT ONLINE: {bot.user}")
+
+# =========================
+# TEST COMMAND
+# =========================
+@bot.command()
+async def test(ctx):
+    await ctx.send("✅ Bot funktioniert")
 
 # =========================
 # ONDUTY
@@ -81,10 +89,8 @@ async def offduty(ctx):
         await ctx.send("❌ Du bist nicht OnDuty", delete_after=3)
 
 # =========================
-# VERIFY SYSTEM
+# VERIFY
 # =========================
-VERIFY_ROLE_NAME = "Verified"
-
 @bot.command()
 async def verify(ctx):
     code = random.randint(1000, 9999)
@@ -115,8 +121,10 @@ async def code(ctx, number: int):
         await ctx.send("❌ Falscher Code")
 
 # =========================
-# 💰 SIMPLE ECONOMY
+# ECONOMY
 # =========================
+coins = {}
+
 @bot.command()
 async def daily(ctx):
     coins[ctx.author.id] = coins.get(ctx.author.id, 0) + 100
@@ -127,7 +135,7 @@ async def balance(ctx):
     await ctx.send(f"💰 Coins: {coins.get(ctx.author.id, 0)}")
 
 # =========================
-# 📜 HELP COMMAND
+# HELP
 # =========================
 @bot.command()
 async def help(ctx):
@@ -138,6 +146,7 @@ async def help(ctx):
 🔐 !verify / !code
 🟢 !onduty <passwort>
 🔴 !offduty
+🧪 !test
 """)
 
 # =========================
