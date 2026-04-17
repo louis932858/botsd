@@ -27,6 +27,12 @@ verification_codes = {}
 music_queue = []
 
 # =========================
+# ONDUTY SETTINGS
+# =========================
+ONDUTY_PASSWORD = "louis12"
+ONDUTY_ROLES = ["★", "👑⠀×⠀CO OWNER⠀×⠀👑"]
+
+# =========================
 # START
 # =========================
 @bot.event
@@ -44,10 +50,9 @@ async def on_message(message):
     # 🚫 Links block
     if "http" in message.content:
         await message.delete()
-        await message.channel.send("🚫 Keine Links erlaubt!")
-        return
+        return await message.channel.send("🚫 Keine Links!")
 
-    # 📈 XP
+    # 📈 XP SYSTEM
     user = message.author.id
     xp[user] = xp.get(user, 0) + 5
     lvl = level.get(user, 1)
@@ -81,7 +86,7 @@ async def warn(ctx, member: discord.Member):
 
     if warns[member.id] >= 3:
         await member.kick()
-        await ctx.send("👢 automatisch gekickt!")
+        await ctx.send("👢 automatisch gekickt")
 
 @bot.command()
 @commands.has_permissions(kick_members=True)
@@ -95,14 +100,8 @@ async def ban(ctx, member: discord.Member):
     await member.ban()
     await ctx.send("⛔ gebannt")
 
-@bot.command()
-@commands.has_permissions(manage_roles=True)
-async def role(ctx, member: discord.Member, role: discord.Role):
-    await member.add_roles(role)
-    await ctx.send("🎭 Rolle gegeben")
-
 # =========================
-# 🎟 TICKET SYSTEM
+# 🎟 TICKETS
 # =========================
 @bot.command()
 async def ticket(ctx):
@@ -122,7 +121,7 @@ async def ticket(ctx):
 @bot.command()
 async def close(ctx):
     if "ticket" in ctx.channel.name:
-        await ctx.send("🔒 Schließen...")
+        await ctx.send("🔒 schließen...")
         await asyncio.sleep(2)
         await ctx.channel.delete()
 
@@ -136,13 +135,13 @@ async def verify(ctx):
     code = random.randint(1000, 9999)
     verification_codes[ctx.author.id] = code
 
-    await ctx.author.send(f"🔐 Dein Code: {code}")
+    await ctx.author.send(f"🔐 Code: {code}")
     await ctx.send("📩 DM gesendet!")
 
 @bot.command()
 async def code(ctx, number: int):
     if ctx.author.id not in verification_codes:
-        return await ctx.send("❌ Kein Code!")
+        return await ctx.send("❌ Kein Code")
 
     if verification_codes[ctx.author.id] == number:
         role = discord.utils.get(ctx.guild.roles, name=ROLE_NAME)
@@ -155,7 +154,7 @@ async def code(ctx, number: int):
 
         del verification_codes[ctx.author.id]
     else:
-        await ctx.send("❌ Falsch!")
+        await ctx.send("❌ Falsch")
 
 # =========================
 # 🔊 MUSIC SYSTEM
@@ -186,7 +185,7 @@ async def play(ctx, url):
         await play_next(ctx)
 
 async def play_next(ctx):
-    if len(music_queue) == 0:
+    if not music_queue:
         return
 
     url = music_queue.pop(0)
@@ -227,22 +226,62 @@ async def ai(ctx, *, msg):
     await ctx.send(random.choice(["Ja 🤖", "Nein ❌", "Vielleicht 🤔", "Okay 👍"]))
 
 # =========================
+# 🔐 ONDUTY
+# =========================
+@bot.command()
+async def onduty(ctx, password: str):
+
+    await ctx.message.delete()
+
+    if password != ONDUTY_PASSWORD:
+        return await ctx.send("❌ Falsch", delete_after=3)
+
+    for role_name in ONDUTY_ROLES:
+        role = discord.utils.get(ctx.guild.roles, name=role_name)
+        if role:
+            await ctx.author.add_roles(role)
+
+    msg = await ctx.send("🟢 OnDuty aktiviert")
+    await msg.delete(delay=5)
+
+# =========================
+# 🔴 OFFDUTY
+# =========================
+@bot.command()
+async def offduty(ctx):
+
+    removed = []
+
+    for role_name in ONDUTY_ROLES:
+        role = discord.utils.get(ctx.guild.roles, name=role_name)
+
+        if role and role in ctx.author.roles:
+            await ctx.author.remove_roles(role)
+            removed.append(role_name)
+
+    if removed:
+        msg = await ctx.send("🔴 OffDuty aktiv")
+        await msg.delete(delay=5)
+    else:
+        await ctx.send("❌ Keine Rollen")
+
+# =========================
 # 📜 HELP
 # =========================
 @bot.command()
 async def help(ctx):
-    embed = discord.Embed(title="🤖 Bot Commands", color=discord.Color.blue())
+    embed = discord.Embed(title="🤖 Bot Commands")
 
-    embed.add_field(name="💰 Economy", value="!daily !balance", inline=False)
-    embed.add_field(name="⚠️ Moderation", value="!warn !kick !ban !role", inline=False)
-    embed.add_field(name="🎟 Tickets", value="!ticket !close", inline=False)
-    embed.add_field(name="🔐 Verify", value="!verify !code", inline=False)
-    embed.add_field(name="🔊 Music", value="!join !play !skip !stop !leave", inline=False)
-    embed.add_field(name="🤖 AI", value="!ai", inline=False)
+    embed.add_field(name="💰", value="!daily !balance", inline=False)
+    embed.add_field(name="⚠️", value="!warn !kick !ban", inline=False)
+    embed.add_field(name="🎟", value="!ticket !close", inline=False)
+    embed.add_field(name="🔐", value="!verify !code", inline=False)
+    embed.add_field(name="🔊", value="!join !play !skip !stop !leave", inline=False)
+    embed.add_field(name="🟢 Duty", value="!onduty !offduty", inline=False)
 
     await ctx.send(embed=embed)
 
 # =========================
-# START BOT
+# START
 # =========================
 bot.run(os.getenv("TOKEN"))
