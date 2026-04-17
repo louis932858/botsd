@@ -5,14 +5,19 @@ import random
 import asyncio
 import yt_dlp
 
+# =========================
+# INTENTS
+# =========================
 intents = discord.Intents.default()
 intents.message_content = True
 intents.members = True
 
 bot = commands.Bot(command_prefix="!", intents=intents)
 
+bot.remove_command("help")
+
 # =========================
-# 📊 DATABASE
+# DATABASE
 # =========================
 coins = {}
 xp = {}
@@ -22,42 +27,28 @@ verification_codes = {}
 music_queue = []
 
 # =========================
-# 🔐 VERIFICATION ROLE
-# =========================
-VERIFIED_ROLE_NAME = "👥⠀×⠀COMMUNITY⠀×⠀👥"
-
-# =========================
-# 🧾 LOG FUNCTION
-# =========================
-async def log(guild, msg):
-    channel = discord.utils.get(guild.text_channels, name="logs")
-    if channel:
-        await channel.send(f"🧾 {msg}")
-
-# =========================
-# 🤖 ON READY
+# START
 # =========================
 @bot.event
 async def on_ready():
     print(f"Bot online: {bot.user}")
 
 # =========================
-# 📈 XP + AUTO MOD
+# AUTO MOD
 # =========================
 @bot.event
 async def on_message(message):
     if message.author.bot:
         return
 
-    user = message.author.id
-
-    # 🚫 Anti-Link
+    # 🚫 Links block
     if "http" in message.content:
         await message.delete()
         await message.channel.send("🚫 Keine Links erlaubt!")
         return
 
     # 📈 XP
+    user = message.author.id
     xp[user] = xp.get(user, 0) + 5
     lvl = level.get(user, 1)
 
@@ -72,8 +63,7 @@ async def on_message(message):
 # =========================
 @bot.command()
 async def daily(ctx):
-    user = ctx.author.id
-    coins[user] = coins.get(user, 0) + 100
+    coins[ctx.author.id] = coins.get(ctx.author.id, 0) + 100
     await ctx.send("💰 +100 Coins")
 
 @bot.command()
@@ -81,45 +71,35 @@ async def balance(ctx):
     await ctx.send(f"💰 Coins: {coins.get(ctx.author.id, 0)}")
 
 # =========================
-# ⚠️ WARN SYSTEM
+# ⚠️ MODERATION
 # =========================
 @bot.command()
 @commands.has_permissions(kick_members=True)
-async def warn(ctx, member: discord.Member, *, reason="Kein Grund"):
+async def warn(ctx, member: discord.Member):
     warns[member.id] = warns.get(member.id, 0) + 1
-
-    await ctx.send(f"⚠️ Warn {member.mention} ({warns[member.id]}/3)")
+    await ctx.send(f"⚠️ Warn ({warns[member.id]}/3)")
 
     if warns[member.id] >= 3:
-        await member.kick(reason="3 Warns")
+        await member.kick()
         await ctx.send("👢 automatisch gekickt!")
 
-# =========================
-# 👢 KICK
-# =========================
 @bot.command()
 @commands.has_permissions(kick_members=True)
-async def kick(ctx, member: discord.Member, *, reason="Kein Grund"):
-    await member.kick(reason=reason)
+async def kick(ctx, member: discord.Member):
+    await member.kick()
     await ctx.send("👢 gekickt")
 
-# =========================
-# ⛔ BAN
-# =========================
 @bot.command()
 @commands.has_permissions(ban_members=True)
-async def ban(ctx, member: discord.Member, *, reason="Kein Grund"):
-    await member.ban(reason=reason)
+async def ban(ctx, member: discord.Member):
+    await member.ban()
     await ctx.send("⛔ gebannt")
 
-# =========================
-# 🎭 ROLE GIVE
-# =========================
 @bot.command()
 @commands.has_permissions(manage_roles=True)
 async def role(ctx, member: discord.Member, role: discord.Role):
     await member.add_roles(role)
-    await ctx.send(f"🎭 Rolle gegeben: {role.name}")
+    await ctx.send("🎭 Rolle gegeben")
 
 # =========================
 # 🎟 TICKET SYSTEM
@@ -136,34 +116,36 @@ async def ticket(ctx):
         overwrites=overwrites
     )
 
-    await channel.send("🎟 Support Ticket erstellt!")
+    await channel.send("🎟 Ticket erstellt!")
     await ctx.send("✅ Ticket erstellt!")
 
 @bot.command()
 async def close(ctx):
     if "ticket" in ctx.channel.name:
-        await ctx.send("🔒 Ticket wird geschlossen...")
+        await ctx.send("🔒 Schließen...")
         await asyncio.sleep(2)
         await ctx.channel.delete()
 
 # =========================
-# 🔐 VERIFICATION SYSTEM
+# 🔐 VERIFICATION
 # =========================
+ROLE_NAME = "👥⠀×⠀COMMUNITY⠀×⠀👥"
+
 @bot.command()
 async def verify(ctx):
     code = random.randint(1000, 9999)
     verification_codes[ctx.author.id] = code
 
     await ctx.author.send(f"🔐 Dein Code: {code}")
-    await ctx.send("📩 Schau in deine DMs!")
+    await ctx.send("📩 DM gesendet!")
 
 @bot.command()
-async def code(ctx, user_code: int):
+async def code(ctx, number: int):
     if ctx.author.id not in verification_codes:
-        return await ctx.send("❌ Kein Code angefordert!")
+        return await ctx.send("❌ Kein Code!")
 
-    if verification_codes[ctx.author.id] == user_code:
-        role = discord.utils.get(ctx.guild.roles, name=VERIFIED_ROLE_NAME)
+    if verification_codes[ctx.author.id] == number:
+        role = discord.utils.get(ctx.guild.roles, name=ROLE_NAME)
 
         if role:
             await ctx.author.add_roles(role)
@@ -173,7 +155,7 @@ async def code(ctx, user_code: int):
 
         del verification_codes[ctx.author.id]
     else:
-        await ctx.send("❌ Falscher Code!")
+        await ctx.send("❌ Falsch!")
 
 # =========================
 # 🔊 MUSIC SYSTEM
@@ -182,15 +164,13 @@ async def code(ctx, user_code: int):
 async def join(ctx):
     if ctx.author.voice:
         await ctx.author.voice.channel.connect()
-        await ctx.send("🔊 Beigetreten")
-    else:
-        await ctx.send("❌ Kein Voice")
+        await ctx.send("🔊 Joined")
 
 @bot.command()
 async def leave(ctx):
     if ctx.voice_client:
         await ctx.voice_client.disconnect()
-        await ctx.send("👋 Verlassen")
+        await ctx.send("👋 Left")
 
 @bot.command()
 async def play(ctx, url):
@@ -200,10 +180,9 @@ async def play(ctx, url):
     if not ctx.voice_client:
         await ctx.author.voice.channel.connect()
 
-    voice = ctx.voice_client
     music_queue.append(url)
 
-    if not voice.is_playing():
+    if not ctx.voice_client.is_playing():
         await play_next(ctx)
 
 async def play_next(ctx):
@@ -222,7 +201,7 @@ async def play_next(ctx):
     source = await discord.FFmpegOpusAudio.from_probe(audio)
 
     def after(error):
-        fut = asyncio.run_coroutine_threadsafe(play_next(ctx), bot.loop)
+        asyncio.run_coroutine_threadsafe(play_next(ctx), bot.loop)
 
     voice.play(source, after=after)
     await ctx.send(f"🎵 Now playing: {info['title']}")
@@ -248,6 +227,22 @@ async def ai(ctx, *, msg):
     await ctx.send(random.choice(["Ja 🤖", "Nein ❌", "Vielleicht 🤔", "Okay 👍"]))
 
 # =========================
-# 🚀 START
+# 📜 HELP
+# =========================
+@bot.command()
+async def help(ctx):
+    embed = discord.Embed(title="🤖 Bot Commands", color=discord.Color.blue())
+
+    embed.add_field(name="💰 Economy", value="!daily !balance", inline=False)
+    embed.add_field(name="⚠️ Moderation", value="!warn !kick !ban !role", inline=False)
+    embed.add_field(name="🎟 Tickets", value="!ticket !close", inline=False)
+    embed.add_field(name="🔐 Verify", value="!verify !code", inline=False)
+    embed.add_field(name="🔊 Music", value="!join !play !skip !stop !leave", inline=False)
+    embed.add_field(name="🤖 AI", value="!ai", inline=False)
+
+    await ctx.send(embed=embed)
+
+# =========================
+# START BOT
 # =========================
 bot.run(os.getenv("TOKEN"))
