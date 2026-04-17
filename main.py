@@ -3,6 +3,7 @@ from discord.ext import commands
 import random
 import datetime
 import asyncio
+import os
 
 intents = discord.Intents.default()
 intents.message_content = True
@@ -17,7 +18,7 @@ coins = {}
 levels = {}
 
 # =========================
-# 🧾 LOG CHANNEL
+# 🧾 LOG FUNCTION
 # =========================
 async def log(guild, msg):
     channel = discord.utils.get(guild.text_channels, name="logs")
@@ -108,7 +109,7 @@ async def verify(ctx):
         await ctx.send("❌ Falsch")
 
 # =========================
-# 🤖 SIMPLE AI CHAT (offline fake AI)
+# 🤖 SIMPLE AI CHAT
 # =========================
 @bot.command()
 async def ai(ctx, *, msg):
@@ -122,7 +123,7 @@ async def ai(ctx, *, msg):
     await ctx.send(random.choice(answers))
 
 # =========================
-# 🧾 LOGS
+# 🧾 LOG EVENTS
 # =========================
 @bot.event
 async def on_member_join(member):
@@ -133,5 +134,6 @@ async def on_member_remove(member):
     await log(member.guild, f"{member} hat verlassen")
 
 # =========================
-# 🎟 START BOT
+# 🤖 START BOT (RAILWAY FIX)
 # =========================
+bot.run(os.getenv("TOKEN"))
