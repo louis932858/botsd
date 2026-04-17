@@ -14,20 +14,16 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 TOKEN = os.getenv("TOKEN")
 
 # =========================
-# PASSWORD
+# CONFIG
 # =========================
 ONDUTY_PASSWORD = "louis12"
 
-# =========================
-# ROLES
-# =========================
 ONDUTY_ROLES = [
     1482706290009706688,  # ★
     1482706289048948826,  # 👑 CO OWNER
     1463898436620521613   # OP
 ]
 
-# speichert wer gerade Passwort eingibt
 waiting_password = {}
 
 # =========================
@@ -38,31 +34,37 @@ async def on_ready():
     print(f"🤖 BOT ONLINE: {bot.user}")
 
 # =========================
-# TEST
+# TEST COMMAND
 # =========================
 @bot.command()
 async def test(ctx):
-    await ctx.send("✅ Bot läuft korrekt")
+    await ctx.send("✅ Bot funktioniert")
 
 # =========================
-# ONDUTY START
+# ONDUTY COMMAND
 # =========================
 @bot.command()
 async def onduty(ctx):
+
+    if ctx.guild is None:
+        return await ctx.send("❌ Nur im Server nutzbar")
 
     try:
         await ctx.author.send("🔐 Bitte gib dein OnDuty Passwort ein:")
         waiting_password[ctx.author.id] = ctx.guild.id
 
-        await ctx.send("📩 Ich habe dir eine DM geschickt!")
+        await ctx.send("📩 Passwort wurde dir per DM geschickt!")
     except:
         await ctx.send("❌ DM blockiert")
 
 # =========================
-# OFFDUTY
+# OFFDUTY COMMAND
 # =========================
 @bot.command()
 async def offduty(ctx):
+
+    if ctx.guild is None:
+        return await ctx.send("❌ Nur im Server nutzbar")
 
     removed = False
 
@@ -89,41 +91,48 @@ async def on_message(message):
 
     user_id = message.author.id
 
+    # =========================
+    # ONDUTY PASSWORD SYSTEM
+    # =========================
     if user_id in waiting_password:
 
-        # nur DM erlaubt
-        if message.guild is None:
+        if message.guild is None:  # nur DM
 
             guild_id = waiting_password[user_id]
             guild = discord.utils.get(bot.guilds, id=guild_id)
-            member = guild.get_member(user_id)
 
-            if message.content == ONDUTY_PASSWORD:
+            if guild:
+                member = guild.get_member(user_id)
 
-                if member:
+                if message.content == ONDUTY_PASSWORD:
 
-                    for role_id in ONDUTY_ROLES:
-                        role = guild.get_role(role_id)
-                        if role:
-                            await member.add_roles(role)
+                    if member:
 
-                    await message.channel.send("🟢 OnDuty aktiviert!")
+                        for role_id in ONDUTY_ROLES:
+                            role = guild.get_role(role_id)
+                            if role:
+                                await member.add_roles(role)
 
-                    # optional: Nachricht im Server
-                    for channel in guild.text_channels:
-                        if channel.permissions_for(guild.me).send_messages:
-                            await channel.send(f"🟢 {member.mention} ist jetzt OnDuty")
-                            break
+                        await message.channel.send("🟢 OnDuty aktiviert!")
+
+                        # Nachricht im Server
+                        for channel in guild.text_channels:
+                            if channel.permissions_for(guild.me).send_messages:
+                                await channel.send(f"🟢 {member.mention} ist jetzt OnDuty")
+                                break
+
+                    else:
+                        await message.channel.send("❌ Member nicht gefunden")
 
                 else:
-                    await message.channel.send("❌ Member nicht gefunden")
-
-            else:
-                await message.channel.send("❌ Falsches Passwort")
+                    await message.channel.send("❌ Falsches Passwort")
 
             del waiting_password[user_id]
             return
 
+    # =========================
+    # IMPORTANT
+    # =========================
     await bot.process_commands(message)
 
 # =========================
