@@ -33,25 +33,25 @@ async def on_ready():
     print(f"🤖 BOT ONLINE: {bot.user}")
 
 # =========================
-# TEST
+# TEST COMMAND
 # =========================
 @bot.command()
 async def test(ctx):
     await ctx.send("✅ Bot funktioniert")
 
 # =========================
-# ONDUTY (DM PASSWORD)
+# ONDUTY
 # =========================
 @bot.command()
 async def onduty(ctx):
 
     try:
-        dm = await ctx.author.create_dm()
-        await dm.send("🔐 Bitte gib dein OnDuty Passwort ein:")
-        waiting_password[ctx.author.id] = ctx.guild.id
-        await ctx.send("📩 Ich habe dir eine DM geschickt!")
+        await ctx.author.send("🔐 Bitte gib dein OnDuty Passwort ein:")
+        waiting_password[ctx.author.id] = ctx.channel.id
+
+        await ctx.send("📩 Ich habe dir das Passwort per DM geschickt!")
     except:
-        await ctx.send("❌ Konnte keine DM senden")
+        await ctx.send("❌ DM konnte nicht gesendet werden")
 
 # =========================
 # OFFDUTY
@@ -87,20 +87,34 @@ async def on_message(message):
     if user_id in waiting_password:
 
         if message.guild is None:  # nur DM
-            guild_id = waiting_password[user_id]
+
+            channel_id = waiting_password[user_id]
 
             if message.content == ONDUTY_PASSWORD:
 
-                guild = discord.utils.get(bot.guilds, id=guild_id)
-                member = guild.get_member(user_id)
+                guild = message.guild or discord.utils.get(bot.guilds)
+                member = None
+
+                for g in bot.guilds:
+                    member = g.get_member(user_id)
+                    if member:
+                        guild = g
+                        break
 
                 if member:
+
                     for role_id in ONDUTY_ROLES:
                         role = guild.get_role(role_id)
                         if role:
                             await member.add_roles(role)
 
                     await message.channel.send("🟢 OnDuty aktiviert!")
+
+                    # SERVER MESSAGE im ursprünglichen Channel
+                    channel = guild.get_channel(channel_id)
+                    if channel:
+                        await channel.send(f"🟢 {member.mention} ist jetzt OnDuty")
+
                 else:
                     await message.channel.send("❌ User nicht gefunden")
 
